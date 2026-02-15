@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: unfollow-postgres
+    environment:
+      POSTGRES_DB: unfollow_tracker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: unfollow-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.api
+    container_name: unfollow-api
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENV=development
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/unfollow_tracker?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev-secret-change-in-prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Fetcher Worker (scalable)
+  fetcher:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.fetcher
+    container_name: unfollow-fetcher
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/unfollow_tracker?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - MAX_CONCURRENT_FETCHERS=2
+      - SCRAPE_DELAY_MS=2000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      replicas: 1 # Scale up with: docker-compose up -d --scale fetcher=4
+
+  # Scheduler Service
+  scheduler:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.scheduler
+    container_name: unfollow-scheduler
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/unfollow_tracker?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Database Migrator (run once)
+  migrator:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.migrator
+    container_name: unfollow-migrator
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/unfollow_tracker?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["up"]
+
+  # Frontend (development)
+  web:
+    build:
+      context: ./web
+      dockerfile: ../deploy/docker/Dockerfile.web
+    container_name: unfollow-web
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - api
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+
+volumes:
+  postgres_data:
+  redis_data:

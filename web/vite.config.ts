@@ -78,10 +78,6 @@ export default defineConfig(({ mode }) => {
     css: {
       // Enable CSS source maps in development
       devSourcemap: !isProduction,
-      // PostCSS configuration (uses postcss.config.js if present)
-      postcss: {
-        // Additional PostCSS options if needed
-      },
     },
     // Dependency optimization for development
     optimizeDeps: {

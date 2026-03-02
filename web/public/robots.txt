@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /api/
+Disallow: /auth/callback
+Disallow: /admin/
+Crawl-delay: 1
+Sitemap: https://unfollowtracker.com/sitemap.xml

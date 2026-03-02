@@ -1,0 +1,7 @@
+[Unit]
+Description=Unfollow Tracker Services
+After=network.target
+Wants=unfollow-tracker-api.service unfollow-tracker-fetcher.service unfollow-tracker-scheduler.service
+
+[Install]
+WantedBy=multi-user.target

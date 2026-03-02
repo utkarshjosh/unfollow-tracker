@@ -39,6 +39,7 @@ type ScraperConfig struct {
 	MaxConcurrent     int
 	ProxyPoolURL      string
 	NotificationDelay time.Duration
+	InstagramSession  string // Instagram session cookie for authenticated requests
 }
 
 func Load() (*Config, error) {
@@ -65,6 +66,7 @@ func Load() (*Config, error) {
 			MaxConcurrent:     getEnvInt("MAX_CONCURRENT_FETCHERS", 4),
 			ProxyPoolURL:      getEnv("PROXY_POOL_URL", ""),
 			NotificationDelay: notificationDelay,
+			InstagramSession:  getEnv("INSTAGRAM_SESSION_COOKIE", ""),
 		},
 	}, nil
 }

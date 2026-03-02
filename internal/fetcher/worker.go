@@ -76,18 +76,49 @@ func (w *Worker) processJob(ctx context.Context) error {
 		return fmt.Errorf("invalid account ID: %w", err)
 	}
 
-	// TODO: Fetch from Instagram (stubbed for now)
-	// For now, use placeholder data
-	followerHashes := []string{
-		"hash1", "hash2", "hash3", // Placeholder
+	// Check if we have session authentication
+	if !w.instagram.IsAuthenticated() {
+		return fmt.Errorf("no Instagram session cookie configured - cannot fetch followers")
 	}
 
-	// Process with service
-	if err := w.fetcherSvc.ProcessFetchJob(ctx, accountID, job.ChunkID, followerHashes); err != nil {
-		return fmt.Errorf("failed to process fetch job: %w", err)
+	// Fetch profile to get user ID and follower count
+	profile, err := w.instagram.FetchProfile(ctx, job.Username)
+	if err != nil {
+		return fmt.Errorf("failed to fetch profile for %s: %w", job.Username, err)
 	}
 
-	log.Printf("Worker %d completed account %s", w.id, job.Username)
+	log.Printf("Worker %d: %s has %d followers (public: %v)", w.id, profile.Username, profile.FollowerCount, profile.IsPublic)
+
+	// If account is private and we're not following, we can't fetch followers
+	if !profile.IsPublic {
+		return fmt.Errorf("account %s is private - cannot fetch followers without following", job.Username)
+	}
+
+	// Fetch all followers with pagination
+	delay := time.Duration(w.config.Scraper.DelayMs) * time.Millisecond
+	allFollowers, err := w.instagram.FetchAllFollowers(ctx, profile.UserID, delay)
+	if err != nil {
+		return fmt.Errorf("failed to fetch followers for %s: %w", job.Username, err)
+	}
+
+	log.Printf("Worker %d: fetched %d followers for %s", w.id, len(allFollowers), job.Username)
+
+	// Chunk followers (1000 per chunk)
+	chunks := ChunkFollowers(allFollowers, 1000)
+
+	// Process each chunk
+	for chunkIdx, chunk := range chunks {
+		if err := w.fetcherSvc.ProcessFetchJob(ctx, accountID, chunkIdx, chunk); err != nil {
+			return fmt.Errorf("failed to process chunk %d: %w", chunkIdx, err)
+		}
+
+		// Apply delay between chunks to avoid rate limiting
+		if delay > 0 && chunkIdx < len(chunks)-1 {
+			time.Sleep(delay)
+		}
+	}
+
+	log.Printf("Worker %d completed account %s (%d followers in %d chunks)", w.id, job.Username, len(allFollowers), len(chunks))
 	return nil
 }
 

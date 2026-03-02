@@ -47,10 +47,10 @@ func main() {
 	// Initialize services
 	fetcherSvc := service.NewFetcherService(accountRepo, snapshotRepo, unfollowRepo)
 
-	// Create Instagram scraper (stubbed)
+	// Create Instagram scraper with session cookie
 	// TODO: Load proxies from config if available
 	proxyPool := fetcher.NewProxyPool([]string{})
-	instagram := fetcher.NewInstagramScraper(proxyPool)
+	instagram := fetcher.NewInstagramScraper(proxyPool, cfg.Scraper.InstagramSession)
 
 	// Create workers
 	workers := make([]*fetcher.Worker, cfg.Scraper.MaxConcurrent)

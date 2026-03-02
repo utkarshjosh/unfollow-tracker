@@ -28,8 +28,8 @@ export function UnfollowsList() {
       setLoading(true);
       setError(null);
       const response = await getUnfollows(undefined, ITEMS_PER_PAGE, newOffset);
-      setUnfollows(response.unfollows);
-      setTotal(response.total);
+      setUnfollows(response.unfollows || []);
+      setTotal(response.total || 0);
       setOffset(response.offset);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load unfollows');

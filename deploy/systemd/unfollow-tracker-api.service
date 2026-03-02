@@ -1,0 +1,15 @@
+[Unit]
+Description=Unfollow Tracker API Server
+After=network.target
+
+[Service]
+Type=simple
+User=unfollowtracker
+WorkingDirectory=/opt/unfollow-tracker
+ExecStart=/opt/unfollow-tracker/api
+EnvironmentFile=/opt/unfollow-tracker/.env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

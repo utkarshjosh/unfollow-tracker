@@ -84,6 +84,9 @@ func (w *Worker) processJob(ctx context.Context) error {
 	// Fetch profile to get user ID and follower count
 	profile, err := w.instagram.FetchProfile(ctx, job.Username)
 	if err != nil {
+		if markErr := w.fetcherSvc.MarkScanFailed(ctx, accountID); markErr != nil {
+			log.Printf("Worker %d warning: failed to mark account %s scan failure: %v", w.id, accountID, markErr)
+		}
 		return fmt.Errorf("failed to fetch profile for %s: %w", job.Username, err)
 	}
 
@@ -91,6 +94,9 @@ func (w *Worker) processJob(ctx context.Context) error {
 
 	// If account is private and we're not following, we can't fetch followers
 	if !profile.IsPublic {
+		if markErr := w.fetcherSvc.MarkScanFailed(ctx, accountID); markErr != nil {
+			log.Printf("Worker %d warning: failed to mark account %s scan failure: %v", w.id, accountID, markErr)
+		}
 		return fmt.Errorf("account %s is private - cannot fetch followers without following", job.Username)
 	}
 
@@ -98,6 +104,9 @@ func (w *Worker) processJob(ctx context.Context) error {
 	delay := time.Duration(w.config.Scraper.DelayMs) * time.Millisecond
 	allFollowers, err := w.instagram.FetchAllFollowers(ctx, profile.UserID, delay)
 	if err != nil {
+		if markErr := w.fetcherSvc.MarkScanFailed(ctx, accountID); markErr != nil {
+			log.Printf("Worker %d warning: failed to mark account %s scan failure: %v", w.id, accountID, markErr)
+		}
 		return fmt.Errorf("failed to fetch followers for %s: %w", job.Username, err)
 	}
 
@@ -109,6 +118,9 @@ func (w *Worker) processJob(ctx context.Context) error {
 	// Process each chunk
 	for chunkIdx, chunk := range chunks {
 		if err := w.fetcherSvc.ProcessFetchJob(ctx, accountID, chunkIdx, chunk); err != nil {
+			if markErr := w.fetcherSvc.MarkScanFailed(ctx, accountID); markErr != nil {
+				log.Printf("Worker %d warning: failed to mark account %s scan failure: %v", w.id, accountID, markErr)
+			}
 			return fmt.Errorf("failed to process chunk %d: %w", chunkIdx, err)
 		}
 

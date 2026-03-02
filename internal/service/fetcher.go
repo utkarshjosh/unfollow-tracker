@@ -108,3 +108,22 @@ func (s *FetcherService) ProcessFetchJob(ctx context.Context, accountID uuid.UUI
 
 	return nil
 }
+
+// MarkScanFailed updates account scan metadata after a failed fetch attempt.
+// This prevents immediate re-queue loops for permanently failing accounts.
+func (s *FetcherService) MarkScanFailed(ctx context.Context, accountID uuid.UUID) error {
+	account, err := s.accountRepo.FindByID(ctx, accountID)
+	if err != nil {
+		return fmt.Errorf("failed to find account: %w", err)
+	}
+
+	if err := s.accountRepo.UpdateStats(ctx, accountID, account.FollowerCount, domain.ScanStatusFailed, account.ChunkCount); err != nil {
+		return fmt.Errorf("failed to update account status: %w", err)
+	}
+
+	if err := s.accountRepo.UpdateLastScanned(ctx, accountID); err != nil {
+		return fmt.Errorf("failed to update last scanned: %w", err)
+	}
+
+	return nil
+}

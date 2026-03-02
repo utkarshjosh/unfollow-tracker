@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -30,6 +31,9 @@ func (s *AccountService) CreateAccount(ctx context.Context, userID uuid.UUID, pl
 	// Get user to check plan limits
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 

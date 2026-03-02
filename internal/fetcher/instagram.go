@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,13 +13,20 @@ import (
 	"time"
 )
 
+var (
+	ErrCheckpointRequired = errors.New("checkpoint required")
+	ErrSessionExpired     = errors.New("session expired")
+	ErrRateLimited        = errors.New("rate limited")
+	ErrUserNotFound       = errors.New("user not found")
+)
+
 // InstagramScraper handles Instagram profile and follower scraping using web API
 type InstagramScraper struct {
-	client      *http.Client
-	userAgent   string
-	proxyPool   *ProxyPool
+	client        *http.Client
+	userAgent     string
+	proxyPool     *ProxyPool
 	sessionCookie string
-	csrfToken   string
+	csrfToken     string
 }
 
 // NewInstagramScraper creates a new scraper with optional session cookie
@@ -40,6 +48,12 @@ type ProfileData struct {
 	UserID        string
 	FollowerCount int
 	IsPublic      bool
+}
+
+type apiErrorPayload struct {
+	Message       string `json:"message"`
+	CheckpointURL string `json:"checkpoint_url"`
+	Status        string `json:"status"`
 }
 
 // FetchProfile fetches profile data including user ID and follower count
@@ -80,10 +94,10 @@ func (s *InstagramScraper) fetchProfileViaAPI(ctx context.Context, username stri
 	var result struct {
 		Data struct {
 			User struct {
-				ID            string `json:"id"`
-				Username      string `json:"username"`
-				IsPrivate     bool   `json:"is_private"`
-				FollowerCount int    `json:"edge_followed_by.count"`
+				ID             string `json:"id"`
+				Username       string `json:"username"`
+				IsPrivate      bool   `json:"is_private"`
+				FollowerCount  int    `json:"edge_followed_by.count"`
 				EdgeFollowedBy struct {
 					Count int `json:"count"`
 				} `json:"edge_followed_by"`
@@ -127,10 +141,10 @@ func (s *InstagramScraper) FetchFollowers(ctx context.Context, userID string, cu
 
 	data, err := s.makeRequest(ctx, fullURL, false)
 	if err != nil {
-		if strings.Contains(err.Error(), "401") {
+		if errors.Is(err, ErrSessionExpired) {
 			return nil, "", fmt.Errorf("session expired or invalid")
 		}
-		if strings.Contains(err.Error(), "429") {
+		if errors.Is(err, ErrRateLimited) || errors.Is(err, ErrCheckpointRequired) {
 			return nil, "", fmt.Errorf("rate limited")
 		}
 		return nil, "", fmt.Errorf("failed to fetch followers: %w", err)
@@ -141,10 +155,10 @@ func (s *InstagramScraper) FetchFollowers(ctx context.Context, userID string, cu
 			Username string `json:"username"`
 			ID       string `json:"pk"`
 		} `json:"users"`
-		NextMaxID   string `json:"next_max_id"`
-		BigList     bool   `json:"big_list"`
-		PageSize    int    `json:"page_size"`
-		Status      string `json:"status"`
+		NextMaxID string `json:"next_max_id"`
+		BigList   bool   `json:"big_list"`
+		PageSize  int    `json:"page_size"`
+		Status    string `json:"status"`
 	}
 
 	if err := json.Unmarshal(data, &result); err != nil {
@@ -210,84 +224,131 @@ func (s *InstagramScraper) FetchAllFollowers(ctx context.Context, userID string,
 
 // makeRequest makes an HTTP request with proper headers and session handling
 func (s *InstagramScraper) makeRequest(ctx context.Context, requestURL string, isWebPage bool) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", requestURL, nil)
-	if err != nil {
-		return nil, err
-	}
+	// Retry transient failures like popular Python scrapers do.
+	const maxAttempts = 3
+	var lastErr error
 
-	// Set headers to mimic browser
-	req.Header.Set("User-Agent", s.userAgent)
-	req.Header.Set("Accept", "*/*")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
-	req.Header.Set("DNT", "1")
-	req.Header.Set("Connection", "keep-alive")
-	req.Header.Set("Upgrade-Insecure-Requests", "1")
-	req.Header.Set("Sec-Fetch-Dest", "document")
-	req.Header.Set("Sec-Fetch-Mode", "navigate")
-	// Sec-Fetch-Site: "none" for web pages, "same-origin" for API requests
-	if isWebPage {
-		req.Header.Set("Sec-Fetch-Site", "none")
-	} else {
-		req.Header.Set("Sec-Fetch-Site", "same-origin")
-	}
-	req.Header.Set("Cache-Control", "max-age=0")
-
-	// Add session cookie if available
-	if s.sessionCookie != "" {
-		req.Header.Set("Cookie", s.sessionCookie)
-
-		// Add CSRF token for API requests
-		if !isWebPage && s.csrfToken != "" {
-			req.Header.Set("X-CSRFToken", s.csrfToken)
-			req.Header.Set("X-IG-App-ID", "936619743392459") // Web app ID
-			req.Header.Set("X-IG-WWW-Claim", "0")            // Required for API requests (instaloader pattern)
-			req.Header.Set("X-Requested-With", "XMLHttpRequest")
-			req.Header.Set("Referer", "https://www.instagram.com/")
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, "GET", requestURL, nil)
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	// Apply proxy if available
-	if s.proxyPool != nil && len(s.proxyPool.proxies) > 0 {
-		proxyURL := s.proxyPool.Next()
-		if proxyURL != "" {
-			parsedProxy, err := url.Parse(proxyURL)
-			if err == nil {
-				s.client.Transport = &http.Transport{
-					Proxy: http.ProxyURL(parsedProxy),
+		// Set headers to mimic browser clients.
+		req.Header.Set("User-Agent", s.userAgent)
+		req.Header.Set("Accept", "*/*")
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+		req.Header.Set("Accept-Encoding", "gzip, deflate")
+		req.Header.Set("DNT", "1")
+		req.Header.Set("Connection", "keep-alive")
+		req.Header.Set("Upgrade-Insecure-Requests", "1")
+		req.Header.Set("Sec-Fetch-Dest", "document")
+		req.Header.Set("Sec-Fetch-Mode", "navigate")
+		req.Header.Set("Origin", "https://www.instagram.com")
+		req.Header.Set("Referer", "https://www.instagram.com/")
+		req.Header.Set("X-Instagram-AJAX", "1")
+		req.Header.Set("X-Requested-With", "XMLHttpRequest")
+		// Sec-Fetch-Site: "none" for web pages, "same-origin" for API requests
+		if isWebPage {
+			req.Header.Set("Sec-Fetch-Site", "none")
+		} else {
+			req.Header.Set("Sec-Fetch-Site", "same-origin")
+		}
+		req.Header.Set("Cache-Control", "max-age=0")
+
+		// Add session cookie if available
+		if s.sessionCookie != "" {
+			req.Header.Set("Cookie", s.sessionCookie)
+
+			// Add CSRF token for API requests
+			if !isWebPage && s.csrfToken != "" {
+				req.Header.Set("X-CSRFToken", s.csrfToken)
+				req.Header.Set("X-IG-App-ID", "936619743392459") // Web app ID
+				req.Header.Set("X-IG-WWW-Claim", "0")
+			}
+		}
+
+		// Apply proxy if available
+		if s.proxyPool != nil && len(s.proxyPool.proxies) > 0 {
+			proxyURL := s.proxyPool.Next()
+			if proxyURL != "" {
+				parsedProxy, err := url.Parse(proxyURL)
+				if err == nil {
+					s.client.Transport = &http.Transport{
+						Proxy: http.ProxyURL(parsedProxy),
+					}
 				}
+			}
+		}
+
+		resp, err := s.client.Do(req)
+		if err != nil {
+			lastErr = err
+		} else {
+			body, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if readErr != nil {
+				lastErr = readErr
+			} else {
+				if resp.StatusCode == 200 {
+					return body, nil
+				}
+				lastErr = parseHTTPError(resp.StatusCode, body)
+				if !isRetriableHTTP(resp.StatusCode, lastErr) {
+					return nil, lastErr
+				}
+			}
+		}
+
+		if attempt < maxAttempts {
+			backoff := time.Duration(attempt*attempt) * time.Second
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(backoff):
 			}
 		}
 	}
 
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	return nil, lastErr
+}
 
-	if resp.StatusCode == 302 {
-		// 302 redirect to login page indicates session expired
-		return nil, fmt.Errorf("302: session expired - redirect to login")
-	}
+func parseHTTPError(statusCode int, body []byte) error {
+	var payload apiErrorPayload
+	_ = json.Unmarshal(body, &payload)
 
-	if resp.StatusCode == 401 {
-		return nil, fmt.Errorf("401: unauthorized - session expired or invalid")
-	}
-
-	if resp.StatusCode == 429 {
-		return nil, fmt.Errorf("429: rate limited")
+	message := strings.TrimSpace(payload.Message)
+	if message == "checkpoint_required" {
+		if payload.CheckpointURL != "" {
+			return fmt.Errorf("%w: %s", ErrCheckpointRequired, payload.CheckpointURL)
+		}
+		return ErrCheckpointRequired
 	}
 
-	if resp.StatusCode == 404 {
-		return nil, fmt.Errorf("404: user not found")
+	if message == "login_required" || statusCode == 302 || statusCode == 401 {
+		return ErrSessionExpired
 	}
 
-	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+	if statusCode == 429 || strings.Contains(strings.ToLower(message), "please wait a few minutes") {
+		return ErrRateLimited
 	}
 
-	return io.ReadAll(resp.Body)
+	if statusCode == 404 {
+		return ErrUserNotFound
+	}
+
+	if message != "" {
+		return fmt.Errorf("unexpected status %d (%s): %s", statusCode, payload.Status, message)
+	}
+
+	return fmt.Errorf("unexpected status %d: %s", statusCode, string(body))
+}
+
+func isRetriableHTTP(statusCode int, err error) bool {
+	if statusCode >= 500 {
+		return true
+	}
+	return errors.Is(err, ErrRateLimited)
 }
 
 // parseProfileData extracts profile data from Instagram web page
@@ -318,9 +379,9 @@ func (s *InstagramScraper) parseProfileData(data []byte) (*ProfileData, error) {
 			ProfilePage []struct {
 				GraphQL struct {
 					User struct {
-						ID            string `json:"id"`
-						Username      string `json:"username"`
-						IsPrivate     bool   `json:"is_private"`
+						ID             string `json:"id"`
+						Username       string `json:"username"`
+						IsPrivate      bool   `json:"is_private"`
 						EdgeFollowedBy struct {
 							Count int `json:"count"`
 						} `json:"edge_followed_by"`

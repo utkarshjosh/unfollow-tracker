@@ -87,6 +87,10 @@ func (s *Server) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	// Call service
 	account, err := s.accountSvc.CreateAccount(r.Context(), userID, req.Platform, req.Username)
 	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			handlers.Error(w, http.StatusBadRequest, "user profile not found")
+			return
+		}
 		if errors.Is(err, domain.ErrAccountLimitReached) {
 			handlers.Error(w, http.StatusBadRequest, "account limit reached for your plan")
 			return

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
 import type { LoginResponse } from '@/types/api';
+import { SiteLogo } from '@/components/branding/SiteLogo';
 import {
   Shield,
   Lock,
@@ -16,7 +17,6 @@ import {
   CheckCircle,
   Loader2,
   ArrowRight,
-  HeartHandshake,
 } from 'lucide-react';
 
 export function Login() {
@@ -69,13 +69,10 @@ export function Login() {
       <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative flex-col justify-between p-12 xl:p-16">
         {/* Logo area */}
         <div className="relative z-10">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-soft to-indigo-deep flex items-center justify-center shadow-lg shadow-violet-soft/25 group-hover:shadow-violet-soft/40 transition-shadow duration-300">
-              <HeartHandshake className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-heading font-semibold text-text-primary">
-              Unfollow Tracker
-            </span>
+          <Link to="/" className="group inline-flex">
+            <SiteLogo
+              iconClassName="w-10 h-10 rounded-xl shadow-lg shadow-violet-soft/25 transition-shadow duration-300 group-hover:shadow-violet-soft/40"
+            />
           </Link>
         </div>
 
@@ -136,13 +133,10 @@ export function Login() {
       <div className="w-full lg:w-1/2 xl:w-2/5 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative z-10">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-soft to-indigo-deep flex items-center justify-center shadow-lg shadow-violet-soft/25">
-              <HeartHandshake className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-heading font-semibold text-text-primary">
-              Unfollow Tracker
-            </span>
+          <div className="mb-8 flex justify-center lg:hidden">
+            <Link to="/">
+              <SiteLogo iconClassName="w-10 h-10 rounded-xl shadow-lg shadow-violet-soft/25" />
+            </Link>
           </div>
 
           {/* Glass card */}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
+import { SiteLogo } from '@/components/branding/SiteLogo';
 import {
   Shield,
   Users,
@@ -16,15 +16,13 @@ import {
   Sparkles,
   MessageCircle,
   ChevronDown,
-  Plus,
-  Minus,
 } from 'lucide-react';
 
 // Animated gradient orb component
 function GradientOrb({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
-      className={\`absolute rounded-full blur-[100px] opacity-60 animate-pulse-slow \${className}\`}
+      className={`absolute rounded-full blur-[100px] opacity-60 animate-pulse-slow ${className}`}
       style={{
         background: 'linear-gradient(135deg, #7C3AED 0%, #1E1B4B 50%, #0F0D1A 100%)',
         animationDuration: '8s',
@@ -38,7 +36,7 @@ function GradientOrb({ className, style }: { className?: string; style?: React.C
 function GlassCard({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
     <div
-      className={\`relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl transition-all duration-500 hover:bg-white/[0.06] hover:border-white/20 \${className}\`}
+      className={`relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl transition-all duration-500 hover:bg-white/[0.06] hover:border-white/20 ${className}`}
       style={style}
     >
       {children}
@@ -61,7 +59,7 @@ function FeatureCard({
   return (
     <GlassCard
       className="group p-8"
-      style={{ animationDelay: \`\${delay}ms\` }}
+      style={{ animationDelay: `${delay}ms` }}
     >
       <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/5 text-violet-400 transition-transform duration-500 group-hover:scale-110">
         <Icon className="h-7 w-7" />
@@ -103,10 +101,12 @@ function TestimonialCard({
   quote,
   author,
   role,
+  avatar,
 }: {
   quote: string;
   author: string;
   role: string;
+  avatar: string;
 }) {
   return (
     <GlassCard className="p-8">
@@ -117,9 +117,11 @@ function TestimonialCard({
       </div>
       <p className="mb-6 text-lg leading-relaxed text-slate-300">&ldquo;{quote}&rdquo;</p>
       <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-lg font-semibold text-white">
-          {author.charAt(0)}
-        </div>
+        <img
+          src={avatar}
+          alt={author}
+          className="h-12 w-12 rounded-full object-cover ring-2 ring-white/10"
+        />
         <div>
           <p className="font-semibold text-white">{author}</p>
           <p className="text-sm text-slate-400">{role}</p>
@@ -176,7 +178,7 @@ function DashboardPreview() {
                 <p className="mb-1 text-xs text-slate-500">{stat.label}</p>
                 <div className="flex items-end justify-between">
                   <span className="text-xl font-bold text-white">{stat.value}</span>
-                  <span className={\`text-xs \${stat.change.startsWith('+') ? 'text-emerald-400' : 'text-rose-400'}\`}>
+                  <span className={`text-xs ${stat.change.startsWith('+') ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {stat.change}
                   </span>
                 </div>
@@ -199,7 +201,7 @@ function DashboardPreview() {
                 <div
                   key={i}
                   className="flex-1 rounded-t bg-gradient-to-t from-violet-600 to-violet-400 transition-all duration-500 hover:from-violet-500 hover:to-violet-300"
-                  style={{ height: \`\${h}%\`, opacity: 0.6 + (i * 0.03) }}
+                  style={{ height: `${h}%`, opacity: 0.6 + (i * 0.03) }}
                 />
               ))}
             </div>
@@ -210,17 +212,21 @@ function DashboardPreview() {
             <span className="mb-3 block text-sm font-medium text-slate-300">Recent Activity</span>
             <div className="space-y-2">
               {[
-                { name: 'sarah_creates', action: 'unfollowed', time: '2h ago' },
-                { name: 'tech_daily', action: 'followed', time: '5h ago' },
-                { name: 'design_hub', action: 'unfollowed', time: '1d ago' },
+                { name: 'sarah_creates', action: 'unfollowed', time: '2h ago', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=64&h=64&fit=crop&crop=face' },
+                { name: 'tech_daily', action: 'followed', time: '5h ago', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=face' },
+                { name: 'design_hub', action: 'unfollowed', time: '1d ago', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=64&h=64&fit=crop&crop=face' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600" />
+                    <img
+                      src={item.avatar}
+                      alt={item.name}
+                      className="h-8 w-8 rounded-full object-cover ring-1 ring-white/10"
+                    />
                     <span className="text-sm text-slate-300">@{item.name}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={\`text-xs \${item.action === 'unfollowed' ? 'text-rose-400' : 'text-emerald-400'}\`}>
+                    <span className={`text-xs ${item.action === 'unfollowed' ? 'text-rose-400' : 'text-emerald-400'}`}>
                       {item.action}
                     </span>
                     <span className="text-xs text-slate-500">{item.time}</span>
@@ -232,159 +238,6 @@ function DashboardPreview() {
         </div>
       </div>
     </div>
-  );
-}
-
-// FAQ item component
-interface FAQItemProps {
-  question: string;
-  answer: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  index: number;
-}
-
-function FAQItem({ question, answer, isOpen, onToggle, index }: FAQItemProps) {
-  return (
-    <GlassCard
-      className={\`border transition-all duration-300 \${
-        isOpen ? 'border-violet-500/30 bg-white/[0.06]' : 'border-white/10'
-      }\`}
-      style={{ borderRadius: '16px' }}
-    >
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center justify-between p-6 text-left"
-        aria-expanded={isOpen}
-        aria-controls={\`faq-answer-\${index}\`}
-      >
-        <span className="pr-4 text-lg font-semibold text-white">{question}</span>
-        <div
-          className={\`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full transition-all duration-300 \${
-            isOpen
-              ? 'bg-violet-600 text-white'
-              : 'bg-white/5 text-violet-400'
-          }\`}
-        >
-          {isOpen ? (
-            <Minus className="h-5 w-5" />
-          ) : (
-            <Plus className="h-5 w-5" />
-          )}
-        </div>
-      </button>
-      <div
-        id={\`faq-answer-\${index}\`}
-        className={\`overflow-hidden transition-all duration-300 \${
-          isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-        }\`}
-      >
-        <div className="border-t border-white/10 px-6 pb-6 pt-4">
-          <p className="leading-relaxed text-slate-300">{answer}</p>
-        </div>
-      </div>
-    </GlassCard>
-  );
-}
-
-// FAQ section component
-function FAQSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
-
-  const faqs = [
-    {
-      question: 'How can I see who unfollowed me on Instagram?',
-      answer:
-        'Our instagram unfollower tracker makes it easy to see who unfollowed me on instagram. Simply connect your Instagram account securely, and our instagram analytics tool will monitor your follower count in the background. You will receive digestible reports showing exactly who unfollowed you, when it happened, and trends over time. Unlike other apps that spam you with instant notifications, we deliver insights on your schedule—daily, weekly, or monthly—so you stay informed without the anxiety.',
-    },
-    {
-      question: 'Is Unfollow Tracker safe to use?',
-      answer:
-        'Absolutely. As a privacy first analytics platform, we prioritize your security above all else. We use end-to-end encryption, never store your Instagram password, and only request read-only permissions. Our ethical social media tools are built with security best practices, regular audits, and GDPR compliance. We have designed every aspect of our service to protect your data while delivering the insights you need to grow your presence.',
-    },
-    {
-      question: 'Does this tool violate Instagram\\'s terms of service?',
-      answer:
-        'No. Our instagram analytics tool operates fully within Instagram\\'s API guidelines and terms of service. We use official, approved API endpoints with read-only access—we never automate actions like following, unfollowing, liking, or commenting. Unlike risky third-party apps that scrape data or use unofficial methods, our ethical social media tools take a compliant, transparent approach that respects both Instagram\\'s platform and your account security.',
-    },
-    {
-      question: 'How is Unfollow Tracker different from other unfollower apps?',
-      answer:
-        'Unlike other instagram unfollower tracker apps that bombard you with ads, sell your data to advertisers, or use invasive permissions, we have built Unfollow Tracker around privacy first analytics and mental wellness. We do not show instant notifications for unfollows to reduce social media anxiety. We never sell your data. Our interface is clean, ad-free, and designed for creators who want insights—not obsessions. Plus, our ethical social media tools approach means full transparency about what data we collect and why.',
-    },
-    {
-      question: 'Is my Instagram data private and secure?',
-      answer:
-        'Yes. Your privacy is our foundation. As a privacy first analytics service, we encrypt all data in transit and at rest. We never sell, share, or monetize your personal information. Our instagram analytics tool collects only the minimum data necessary to provide insights, and you can delete your account and all associated data at any time with one click. We are GDPR compliant and committed to ethical data practices.',
-    },
-    {
-      question: 'Do you store my Instagram password?',
-      answer:
-        'Never. We use Instagram\\'s official OAuth authentication system, which means you log in directly through Instagram\\'s secure servers. We receive a secure access token—not your password. This token has limited, read-only permissions and can be revoked by you at any time from your Instagram settings. This is the same secure method used by major apps and represents the gold standard for ethical social media tools.',
-    },
-    {
-      question: 'Can I use this for multiple Instagram accounts?',
-      answer:
-        'Yes! Our instagram analytics tool supports multiple accounts, making it perfect for social media managers, agencies, and creators who manage several profiles. You can easily switch between accounts from your dashboard, and each account\\'s data is kept completely separate and secure. Our team plans include support for managing multiple Instagram accounts under one unified interface.',
-    },
-    {
-      question: 'Is there a free version available?',
-      answer:
-        'Yes, we offer a free tier so you can experience our privacy first analytics before committing. The free plan includes basic unfollower tracking and weekly summaries. For creators who need more advanced insights—like detailed analytics, historical data, multiple account support, and custom reporting—our premium plans offer enhanced features at an affordable price. All plans maintain our commitment to being ethical social media tools that respect your privacy.',
-    },
-  ];
-
-  const handleToggle = (index: number) => {
-    setOpenIndex(openIndex === index ? null : index);
-  };
-
-  // JSON-LD FAQPage schema
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqs.map((faq) => ({
-      '@type': 'Question',
-      name: faq.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.answer,
-      },
-    })),
-  };
-
-  return (
-    <>
-      {/* JSON-LD Schema Markup */}
-      <script type="application/ld+json">
-        {JSON.stringify(faqSchema)}
-      </script>
-
-      <section className="relative px-6 py-32">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Frequently Asked <span className="text-violet-400">Questions</span>
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg text-slate-400">
-              Everything you need to know about our instagram unfollower tracker and privacy-first approach.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <FAQItem
-                key={index}
-                question={faq.question}
-                answer={faq.answer}
-                isOpen={openIndex === index}
-                onToggle={() => handleToggle(index)}
-                index={index}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
   );
 }
 
@@ -402,7 +255,7 @@ export function Landing() {
       <div
         className="pointer-events-none fixed inset-0 opacity-[0.015]"
         style={{
-          backgroundImage: \`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")\`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
       />
 
@@ -410,10 +263,10 @@ export function Landing() {
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/5 bg-[#05040a]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 shadow-lg shadow-violet-500/25">
-              <Users className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">Unfollow Tracker</span>
+            <SiteLogo
+              iconClassName="h-10 w-10 rounded-xl shadow-lg shadow-violet-500/25"
+              textClassName="text-xl font-bold tracking-tight text-white"
+            />
           </Link>
 
           <nav className="flex items-center gap-6">
@@ -644,25 +497,25 @@ export function Landing() {
             <div className="grid gap-6 md:grid-cols-3">
               <TestimonialCard
                 quote="Finally, an analytics tool that doesn't make me anxious. The weekly digest is perfect—I stay informed without obsessing over numbers."
-                author="Sarah Chen"
-                role="Content Creator, 50K followers"
+                author="Maya Thompson"
+                role="Content Creator, 52K followers"
+                avatar="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop&crop=face"
               />
               <TestimonialCard
                 quote="The privacy focus sold me. Knowing my data isn't being sold to advertisers makes this worth every penny. Plus the UI is gorgeous."
-                author="Marcus Johnson"
-                role="Photographer, 120K followers"
+                author="Jordan Miller"
+                role="Photographer, 118K followers"
+                avatar="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=128&h=128&fit=crop&crop=face"
               />
               <TestimonialCard
                 quote="I manage 12 brand accounts and Unfollow Tracker saves me hours every week. Clean, simple, and respects our clients' privacy."
-                author="Elena Rodriguez"
+                author="Sofia Rodriguez"
                 role="Social Media Manager"
+                avatar="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&h=128&fit=crop&crop=face"
               />
             </div>
           </div>
         </section>
-
-        {/* FAQ Section */}
-        <FAQSection />
 
         {/* CTA Section */}
         <section className="relative px-6 py-32">
@@ -673,7 +526,7 @@ export function Landing() {
                 <div
                   className="absolute inset-0"
                   style={{
-                    backgroundImage: \`radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)\`,
+                    backgroundImage: `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)`,
                     backgroundSize: '32px 32px',
                   }}
                 />
@@ -722,10 +575,10 @@ export function Landing() {
             {/* Brand */}
             <div>
               <Link to="/" className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700">
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-white">Unfollow Tracker</span>
+                <SiteLogo
+                  iconClassName="h-10 w-10 rounded-xl"
+                  textClassName="text-xl font-bold text-white"
+                />
               </Link>
               <p className="text-sm leading-relaxed text-slate-400">
                 Privacy-first Instagram analytics for creators who value their data and their peace of mind.

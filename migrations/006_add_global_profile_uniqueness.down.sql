@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_accounts_platform_username_unique_global;

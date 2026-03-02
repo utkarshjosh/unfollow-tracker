@@ -22,6 +22,11 @@ func NewAccountService(accountRepo repository.AccountRepository, userRepo reposi
 }
 
 func (s *AccountService) CreateAccount(ctx context.Context, userID uuid.UUID, platform, username string) (*domain.Account, error) {
+	normalizedUsername := domain.NormalizeUsername(username)
+	if normalizedUsername == "" {
+		return nil, domain.ErrInvalidUsername
+	}
+
 	// Get user to check plan limits
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
@@ -47,8 +52,16 @@ func (s *AccountService) CreateAccount(ctx context.Context, userID uuid.UUID, pl
 		return nil, domain.ErrInvalidPlatform
 	}
 
+	alreadyTracked, err := s.accountRepo.ExistsByPlatformAndUsername(ctx, domain.Platform(platform), normalizedUsername)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing account: %w", err)
+	}
+	if alreadyTracked {
+		return nil, domain.ErrAccountAlreadyExists
+	}
+
 	// Create account
-	account := domain.NewAccount(userID, username, domain.Platform(platform))
+	account := domain.NewAccount(userID, normalizedUsername, domain.Platform(platform))
 
 	// Insert to database
 	if err := s.accountRepo.Create(ctx, account); err != nil {

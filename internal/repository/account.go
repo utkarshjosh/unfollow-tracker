@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/utkarsh/unfollow-tracker/internal/domain"
 )
 
@@ -18,6 +19,7 @@ type AccountRepository interface {
 	CountByUserID(ctx context.Context, userID uuid.UUID) (int, error)
 	FindAccountsNeedingScan(ctx context.Context, intervalHours int, limit int) ([]*domain.Account, error)
 	UpdateLastScanned(ctx context.Context, id uuid.UUID) error
+	ExistsByPlatformAndUsername(ctx context.Context, platform domain.Platform, username string) (bool, error)
 }
 
 type PostgresAccountRepository struct {
@@ -49,6 +51,10 @@ func (r *PostgresAccountRepository) Create(ctx context.Context, account *domain.
 	)
 
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return domain.ErrAccountAlreadyExists
+		}
 		return err
 	}
 
@@ -258,4 +264,22 @@ func (r *PostgresAccountRepository) UpdateLastScanned(ctx context.Context, id uu
 	}
 
 	return nil
+}
+
+func (r *PostgresAccountRepository) ExistsByPlatformAndUsername(ctx context.Context, platform domain.Platform, username string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM accounts
+			WHERE platform = $1 AND LOWER(username) = LOWER($2)
+		)
+	`
+
+	var exists bool
+	err := r.db.QueryRowContext(ctx, query, platform, username).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }

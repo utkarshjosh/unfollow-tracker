@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,6 +39,13 @@ type Account struct {
 	ScanStatus    ScanStatus `json:"scan_status" db:"scan_status"`
 	ChunkCount    int        `json:"chunk_count" db:"chunk_count"`
 	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+}
+
+// NormalizeUsername converts user input into a canonical username format.
+func NormalizeUsername(username string) string {
+	username = strings.TrimSpace(username)
+	username = strings.TrimPrefix(username, "@")
+	return strings.ToLower(username)
 }
 
 // NewAccount creates a new account to track

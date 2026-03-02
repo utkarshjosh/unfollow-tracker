@@ -91,6 +91,14 @@ func (s *Server) CreateAccount(w http.ResponseWriter, r *http.Request) {
 			handlers.Error(w, http.StatusBadRequest, "account limit reached for your plan")
 			return
 		}
+		if errors.Is(err, domain.ErrAccountAlreadyExists) {
+			handlers.Error(w, http.StatusBadRequest, "account is already being tracked")
+			return
+		}
+		if errors.Is(err, domain.ErrInvalidUsername) {
+			handlers.Error(w, http.StatusBadRequest, "invalid username")
+			return
+		}
 		if errors.Is(err, domain.ErrInvalidPlatform) {
 			handlers.Error(w, http.StatusBadRequest, "invalid platform")
 			return

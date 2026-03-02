@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { SiteLogo } from '@/components/branding/SiteLogo';
 import { LayoutDashboard, User, Settings, LogOut, Menu } from 'lucide-react';
 import { useState } from 'react';
 
@@ -34,7 +35,10 @@ export function DashboardLayout() {
       >
         <div className="p-6">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-violet-soft">Unfollow Tracker</span>
+            <SiteLogo
+              iconClassName="h-9 w-9 rounded-lg"
+              textClassName="text-2xl font-bold text-violet-soft"
+            />
           </Link>
         </div>
 
